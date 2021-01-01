@@ -1,0 +1,100 @@
+buildscript {
+	repositories {
+		maven {
+			url "https://plugins.gradle.org/m2/"
+		}
+		jcenter()
+	}
+	dependencies {
+		classpath 'com.github.jengelman.gradle.plugins:shadow:6.0.0'
+		classpath 'edu.sc.seis.gradle:launch4j:2.4.6'
+		classpath "com.github.ben-manes:gradle-versions-plugin:0.28.0"
+	}
+}
+
+apply plugin: 'java'
+apply plugin: 'eclipse'
+apply plugin: 'idea'
+apply plugin: 'maven-publish'
+apply plugin: 'com.github.johnrengelman.shadow'
+apply plugin: 'edu.sc.seis.launch4j'
+apply plugin: "com.github.ben-manes.versions"
+
+sourceCompatibility = 1.8
+version = '0.6.1'
+archivesBaseName = "fabric-installer"
+
+// Fetch build number from Jenkins
+def ENV = System.getenv()
+if (ENV.BUILD_NUMBER) {
+    version = version + "." + "${System.getenv().BUILD_NUMBER}"
+}
+
+repositories {
+    mavenCentral()
+    maven {
+        name = 'fabric'
+        url = 'https://maven.fabricmc.net/'
+    }
+}
+
+dependencies {
+	implementation 'com.google.code.gson:gson:2.8.6'
+	testImplementation 'junit:junit:4.13'
+}
+
+shadowJar {
+	relocate 'com.google', 'net.fabricmc.installer.repackage.com.google'
+	minimize()
+	classifier = null
+}
+
+build.dependsOn shadowJar
+
+
+jar {
+    manifest {
+        attributes 'Implementation-Title': 'FabricInstaller',
+                'Implementation-Version': project.version,
+                'Main-Class': 'net.fabricmc.installer.Main'
+    }
+	enabled = false
+}
+
+launch4j {
+    mainClassName = 'net.fabricmc.installer.Main'
+    icon = "${projectDir}/src/main/resources/icon.ico"
+	outfile = "${archivesBaseName}-${project.version}.exe"
+	productName = 'Fabric installer'
+	companyName = "Fabric Team"
+	copyright = "Apache License Version 2.0"
+	manifest = "${projectDir}/l4j-manifest.xml" // https://docs.microsoft.com/en-us/windows/desktop/sbscs/application-manifests This helps with
+}
+
+tasks.build.dependsOn 'createExe'
+
+apply from: 'https://github.com/FabricMC/fabric-docs/raw/master/gradle/license.gradle'
+
+publishing {
+	publications {
+		maven(MavenPublication) {
+			groupId project.group
+			artifactId project.archivesBaseName
+			version project.version
+
+			artifact (file("${projectDir}/build/launch4j/${archivesBaseName}-${project.version}.exe"))
+			artifact (file("${projectDir}/build/libs/${archivesBaseName}-${project.version}.jar"))
+		}
+	}
+	repositories {
+		maven {
+			url "http://mavenupload.modmuss50.me/"
+			if (project.hasProperty('mavenPass')) {
+				credentials {
+					username 'buildslave'
+					password project.getProperty('mavenPass')
+				}
+			}
+		}
+	}
+}
