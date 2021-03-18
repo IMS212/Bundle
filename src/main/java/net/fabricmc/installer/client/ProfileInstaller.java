@@ -40,7 +40,7 @@ public class ProfileInstaller {
 		String json = Utils.readFile(launcherProfiles);
 		JsonObject jsonObject = Utils.GSON.fromJson(json, JsonObject.class);
 		JsonObject profiles = jsonObject.getAsJsonObject("profiles");
-		String profileName = "Bundle Pack" + " - " + pack_id;
+		String profileName = "Better Optifine";
 
 		JsonObject profile;
 		if (profiles.has(profileName)) {

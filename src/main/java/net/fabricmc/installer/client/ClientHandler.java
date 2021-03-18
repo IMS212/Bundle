@@ -16,6 +16,8 @@
 
 package net.fabricmc.installer.client;
 
+import static net.fabricmc.installer.client.ClientInstaller.installMods;
+
 import net.fabricmc.installer.Handler;
 import net.fabricmc.installer.InstallerGui;
 import net.fabricmc.installer.util.ArgumentParser;
@@ -33,6 +35,7 @@ import java.text.MessageFormat;
 public class ClientHandler extends Handler {
 
 	private JCheckBox createProfile;
+	public static JCheckBox intelSodium;
 
 	@Override
 	public String name() {
@@ -55,6 +58,11 @@ public class ClientHandler extends Handler {
 				if (createProfile.isSelected()) {
 					ProfileInstaller.setupProfile(mcPath, profileName, gameVersion);
 				}
+				if (!intelSodium.isSelected()) {
+					showSodiumWarning();
+				}
+				updateProgress(new MessageFormat(Utils.BUNDLE.getString("progress.installing.mods")).format(new Object[]{loaderVersion}));
+				installMods();
 				SwingUtilities.invokeLater(() -> showInstalledMessage(loaderVersion, gameVersion));
 			} catch (Exception e) {
 				error(e);
@@ -81,7 +89,24 @@ public class ClientHandler extends Handler {
 		});
 		JOptionPane.showMessageDialog(null, pane, Utils.BUNDLE.getString("prompt.install.successful.title"), JOptionPane.INFORMATION_MESSAGE);
 	}
-
+	private void showSodiumWarning() {
+		JEditorPane pane = new JEditorPane("text/html", "<html><body style=\"" + buildEditorPaneStyle() + "\">" + new MessageFormat(Utils.BUNDLE.getString("prompt.sodium.warning")).format(new Object[]{}) + "</body></html>");
+		pane.setEditable(false);
+		pane.addHyperlinkListener(e -> {
+			try {
+				if (e.getEventType() == HyperlinkEvent.EventType.ACTIVATED) {
+					if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {
+						Desktop.getDesktop().browse(e.getURL().toURI());
+					} else {
+						throw new UnsupportedOperationException("Failed to open " + e.getURL().toString());
+					}
+				}
+			} catch (Throwable throwable) {
+				error(throwable);
+			}
+		});
+		JOptionPane.showMessageDialog(null, pane, Utils.BUNDLE.getString("prompt.sodium.warning.title"), JOptionPane.INFORMATION_MESSAGE);
+	}
 	@Override
 	public void installCli(ArgumentParser args) throws Exception {
 		File file = new File(args.get("dir"));
@@ -112,7 +137,7 @@ public class ClientHandler extends Handler {
 	@Override
 	public void setupPane2(JPanel pane, InstallerGui installerGui) {
 		addRow(pane, jPanel -> jPanel.add(createProfile = new JCheckBox(Utils.BUNDLE.getString("option.create.profile"), true)));
-
+		addRow(pane, jPanel -> jPanel.add(intelSodium = new JCheckBox(Utils.BUNDLE.getString("option.intel.sodium"), true)));
 		installLocation.setText(Utils.findDefaultInstallDir().getAbsolutePath());
 	}
 
